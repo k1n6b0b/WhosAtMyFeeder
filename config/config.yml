@@ -1,5 +1,8 @@
 frigate:
   mqtt_server: your-frigate-ip
+  mqtt_auth: true
+  mqtt_username: username
+  mqtt_password: password
   main_topic: frigate
   camera: birdcam
   object: bird
