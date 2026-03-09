@@ -4,6 +4,10 @@ frigate:
   mqtt_auth: false
   # mqtt_username: your-username
   # mqtt_password: your-password
+  mqtt_port: 1883  # Optional, default: 1883
+  mqtt_use_tls: false  # Optional, default: false. Use TLS for broker connection
+  mqtt_tls_insecure: false  # Optional, default: false. Don't verify broker certificate
+  # mqtt_tls_ca_certs: /path/to/ca.crt  # Optional. Path to CA certificate file
   main_topic: frigate
   camera:
     - your-camera-name
