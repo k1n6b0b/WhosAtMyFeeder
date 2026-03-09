@@ -95,6 +95,13 @@ def show_detections_by_scientific_name(scientific_name, date, end_date):
                                end_date=end_date, common_name=get_common_name(scientific_name), records=records)
 
 
+@app.route('/api/detections/recent')
+def api_recent_detections():
+    limit = request.args.get('limit', 5, type=int)
+    records = recent_detections(min(limit, 20))  # cap at 20
+    return jsonify(records)
+
+
 @app.route('/daily_summary')
 @app.route('/daily_summary/')
 def show_daily_summary_today():
