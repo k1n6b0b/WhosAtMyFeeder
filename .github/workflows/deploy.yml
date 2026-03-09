@@ -8,6 +8,9 @@ on:
 permissions:
   contents: read
 
+env:
+  DEPLOY_DIR: ${{ vars.DEPLOY_DIR }}
+
 jobs:
   scan-secrets:
     name: Scan for secrets
@@ -66,11 +69,11 @@ jobs:
 
       - name: Deploy
         run: |
-          current=$(grep 'image:' DEPLOY_DIR/docker-compose.yml | awk '{print $2}')
-          echo "$current" > DEPLOY_DIR/.last-deployed
-          sed -i "s|image: ghcr.io/k1n6b0b/whosatmyfeeder:.*|image: ghcr.io/k1n6b0b/whosatmyfeeder:${{ github.sha }}|" DEPLOY_DIR/docker-compose.yml
-          docker compose -f DEPLOY_DIR/docker-compose.yml pull
-          docker compose -f DEPLOY_DIR/docker-compose.yml up -d
+          current=$(grep 'image:' "$DEPLOY_DIR/docker-compose.yml" | awk '{print $2}')
+          echo "$current" > "$DEPLOY_DIR/.last-deployed"
+          sed -i "s|image: ghcr.io/k1n6b0b/whosatmyfeeder:.*|image: ghcr.io/k1n6b0b/whosatmyfeeder:${{ github.sha }}|" "$DEPLOY_DIR/docker-compose.yml"
+          docker compose -f "$DEPLOY_DIR/docker-compose.yml" pull
+          docker compose -f "$DEPLOY_DIR/docker-compose.yml" up -d
 
       - name: Health check
         run: |

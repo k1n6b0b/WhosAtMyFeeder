@@ -4,8 +4,9 @@
 
 set -euo pipefail
 
-COMPOSE="DEPLOY_DIR/docker-compose.yml"
-LAST_DEPLOYED="DEPLOY_DIR/.last-deployed"
+DEPLOY_DIR="${DEPLOY_DIR:?DEPLOY_DIR must be set, e.g. export DEPLOY_DIR=DEPLOY_DIR}"
+COMPOSE="$DEPLOY_DIR/docker-compose.yml"
+LAST_DEPLOYED="$DEPLOY_DIR/.last-deployed"
 
 if [[ ! -f "$LAST_DEPLOYED" ]]; then
   echo "No previous deploy recorded at $LAST_DEPLOYED. Cannot roll back."

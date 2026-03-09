@@ -5,7 +5,7 @@
 ## What's New?
 I'm just about to push a significant update. This will require you to...
 * Delete you current speciesid.db database. If you are attached to that data, just move it somewhere else
-* Update your config.yml file to specify the url of your frigate installation, e.g. http://your-frigate-ip:5000
+* Update your config.yml file to specify the url of your frigate installation, e.g. http://<your-frigate-ip>:5000
   * For those using HAOS add-ons for their Frigate install and possibly running WhosAtMyFeeder on a different box, by default HA doesn't expose port 5000 for Frigate. You have to explicitly configure the Frigate add-on to expose it by going to the Frigate add-on -> Configuration tab and under network add port 5000 against the "Web Interface" config. Without this, it's only exposed internally and not on your wider network and thus won't work.
 
 Why the changes? I have updated the app in a number of ways...
@@ -39,7 +39,7 @@ to send out [snapshots](https://docs.frigate.video/configuration/snapshots). Thi
 
 ```
 mqtt:
-  host: your-mqtt-host
+  host: <your-mqtt-host>
   port: 1883
   topic_prefix: frigate
   user: mqtt_username_here
@@ -78,7 +78,7 @@ cameras:
     ffmpeg:
       hwaccel_args: preset-vaapi
       inputs:
-        - path: rtsp://your-camera-ip:8554/cam
+        - path: rtsp://<your-camera-ip>:8554/cam
           roles:
             - detect
             - record

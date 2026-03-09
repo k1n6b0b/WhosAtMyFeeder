@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run this once on frigate as ubuntu to set up the self-hosted GitHub Actions runner.
+# Run this once on the deployment host to set up the self-hosted GitHub Actions runner.
 # Usage: bash setup-runner.sh <GITHUB_RUNNER_TOKEN>
 # Get the token from: https://github.com/k1n6b0b/WhosAtMyFeeder/settings/actions/runners/new
 
@@ -10,6 +10,7 @@ REPO="https://github.com/k1n6b0b/WhosAtMyFeeder"
 RUNNER_DIR="$HOME/actions-runner"
 RUNNER_VERSION="2.322.0"
 RUNNER_ARCH="linux-x64"
+RUNNER_USER="$(whoami)"
 
 mkdir -p "$RUNNER_DIR"
 cd "$RUNNER_DIR"
@@ -43,7 +44,7 @@ echo "==> Configuring runner..."
   --unattended
 
 echo "==> Installing as systemd service..."
-sudo ./svc.sh install "$(whoami)"
+sudo ./svc.sh install "$RUNNER_USER"
 sudo ./svc.sh start
 
 echo ""
