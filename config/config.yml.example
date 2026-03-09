@@ -14,7 +14,7 @@ frigate:
   object: bird
 classification:
   model: model.tflite
-  threshold: 0.55
+  threshold: 0.7
 webui:
   port: 7766
   host: 0.0.0.0
