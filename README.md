@@ -118,4 +118,6 @@ If you used the default config file and default docker-compose file you should b
 http://127.0.0.1:7766 or on http://yourserveraddress:7766
 
 **Docker Image**
-The image is on Docker Hub at https://hub.docker.com/r/mmcc73/whosatmyfeeder
+The original upstream image is on Docker Hub at https://hub.docker.com/r/mmcc73/whosatmyfeeder
+
+> **Fork note:** This fork builds and publishes its own image to the GitHub Container Registry at `ghcr.io/k1n6b0b/whosatmyfeeder:latest`, built automatically from this repository on every push to `main`.
