@@ -95,6 +95,17 @@ def show_detections_by_scientific_name(scientific_name, date, end_date):
                                end_date=end_date, common_name=get_common_name(scientific_name), records=records)
 
 
+@app.route('/daily_summary')
+@app.route('/daily_summary/')
+def show_daily_summary_today():
+    today = datetime.now().strftime('%Y-%m-%d')
+    target = url_for('show_daily_summary', date=today)
+    query = request.query_string.decode('utf-8')
+    if query:
+        target = f'{target}?{query}'
+    return redirect(target)
+
+
 @app.route('/daily_summary/<date>')
 def show_daily_summary(date):
     date_datetime = datetime.strptime(date, "%Y-%m-%d")
