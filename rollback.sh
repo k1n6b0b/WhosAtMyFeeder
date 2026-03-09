@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-DEPLOY_DIR="${DEPLOY_DIR:?DEPLOY_DIR must be set, e.g. export DEPLOY_DIR=DEPLOY_DIR}"
+DEPLOY_DIR="${DEPLOY_DIR:?DEPLOY_DIR must be set, e.g. export DEPLOY_DIR=/opt/whosatmyfeeder}"
 COMPOSE="$DEPLOY_DIR/docker-compose.yml"
 LAST_DEPLOYED="$DEPLOY_DIR/.last-deployed"
 
