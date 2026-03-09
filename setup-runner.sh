@@ -31,6 +31,9 @@ tar xzf gitleaks.tar.gz gitleaks
 sudo mv gitleaks /usr/local/bin/gitleaks
 rm gitleaks.tar.gz
 
+echo "==> Installing trivy..."
+curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
+
 echo "==> Configuring runner..."
 ./config.sh \
   --url "$REPO" \
