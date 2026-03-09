@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, send_file, abort, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, send_file, abort, send_from_directory, jsonify
 import sqlite3
 import base64
 from datetime import datetime, date
@@ -15,7 +15,7 @@ NAMEDBPATH = './birdnames.db'
 
 
 def format_datetime(value, format='%B %d, %Y %H:%M:%S'):
-    dt = datetime.strptime(value, '%Y-%m-%d %H:%M:%S.%f')  # Adjusted input format to include microseconds
+    dt = datetime.strptime(value, '%Y-%m-%d %H:%M:%S.%f')
     return dt.strftime(format)
 
 
@@ -42,7 +42,6 @@ def frigate_thumbnail(frigate_event):
         if response.status_code == 200:
             return send_file(response.raw, mimetype=response.headers['Content-Type'])
         else:
-            # Return the single transparent pixel image from the local file if the actual image is not found
             return send_from_directory('static/images', '1x1.png', mimetype='image/png')
     except Exception as e:
         print(f"Error fetching image from frigate: {e}", flush=True)
@@ -53,18 +52,14 @@ def frigate_thumbnail(frigate_event):
 def frigate_snapshot(frigate_event):
     frigate_url = config['frigate']['frigate_url']
     try:
-        # Fetch the image from frigate
         print("Getting snapshot from Frigate", flush=True)
         response = requests.get(f'{frigate_url}/api/events/{frigate_event}/snapshot.jpg', stream=True)
 
         if response.status_code == 200:
-            # Serve the image to the client using Flask's send_file()
             return send_file(response.raw, mimetype=response.headers['Content-Type'])
         else:
-            # Return the single transparent pixel image from the local file if the actual image is not found
             return send_from_directory('static/images', '1x1.png', mimetype='image/png')
     except Exception as e:
-        # If there's any issue fetching the image, return a 500 error
         print(f"Error fetching image from frigate: {e}", flush=True)
         abort(500)
 
@@ -73,18 +68,14 @@ def frigate_snapshot(frigate_event):
 def frigate_clip(frigate_event):
     frigate_url = config['frigate']['frigate_url']
     try:
-        # Fetch the clip from frigate
         print("Getting snapshot from Frigate", flush=True)
         response = requests.get(f'{frigate_url}/api/events/{frigate_event}/clip.mp4', stream=True)
 
         if response.status_code == 200:
-            # Serve the image to the client using Flask's send_file()
             return send_file(response.raw, mimetype=response.headers['Content-Type'])
         else:
-            # Return the single transparent pixel image from the local file if the actual image is not found
             return send_from_directory('static/images', '1x1.png', mimetype='image/png')
     except Exception as e:
-        # If there's any issue fetching the image, return a 500 error
         print(f"Error fetching clip from frigate: {e}", flush=True)
         abort(500)
 
@@ -112,6 +103,35 @@ def show_daily_summary(date):
     earliest_date = get_earliest_detection_date()
     return render_template('daily_summary.html', daily_summary=daily_summary, date=date, today=today,
                            earliest_date=earliest_date)
+
+
+@app.route('/detections/<frigate_event>', methods=['DELETE'])
+def delete_detection(frigate_event):
+    if not frigate_event:
+        return jsonify({"success": False, "message": "Missing detection identifier."}), 400
+
+    conn = None
+    try:
+        conn = sqlite3.connect(DBPATH)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM detections WHERE frigate_event = ?", (frigate_event,))
+        deleted_rows = cursor.rowcount
+        conn.commit()
+    except sqlite3.Error as e:
+        print(f"Error deleting detection '{frigate_event}': {e}", flush=True)
+        return jsonify({"success": False, "message": "Unable to delete detection."}), 500
+    finally:
+        if conn:
+            conn.close()
+
+    if deleted_rows == 0:
+        return jsonify({"success": False, "message": "Detection not found."}), 404
+
+    return jsonify({
+        "success": True,
+        "message": "Detection deleted.",
+        "frigate_event": frigate_event
+    }), 200
 
 
 def load_config():

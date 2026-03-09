@@ -9,6 +9,7 @@
             <div class="modal-body">
                 <img id="snapshotImage" src="" alt="Snapshot" class="img-fluid mb-3"/>
                 <button type="button" class="btn btn-primary" onclick="showVideo()">View Video</button>
+                <button type="button" class="btn btn-danger ms-2" id="deleteDetectionButton" onclick="deleteDetection()">Delete</button>
             </div>
         </div>
     </div>
@@ -32,13 +33,21 @@
     </div>
 </div>
 
-
 <script>
     var currentClipUrl;
+    var currentFrigateEvent;
 
-    function showSnapshot(snapshotUrl, clipUrl) {
+    function showSnapshot(snapshotUrl, clipUrl, frigateEvent) {
         document.getElementById("snapshotImage").src = snapshotUrl;
         currentClipUrl = clipUrl;
+        currentFrigateEvent = frigateEvent;
+
+        const deleteButton = document.getElementById("deleteDetectionButton");
+        if (deleteButton) {
+            deleteButton.disabled = !currentFrigateEvent;
+            deleteButton.textContent = "Delete";
+        }
+
         var snapshotModal = new bootstrap.Modal(document.getElementById("snapshotModal"));
         snapshotModal.show();
     }
@@ -51,6 +60,58 @@
         snapshotModal.hide();
         var videoModal = new bootstrap.Modal(document.getElementById("videoModal"));
         videoModal.show();
+    }
+
+    async function deleteDetection() {
+        if (!currentFrigateEvent) {
+            alert("No event selected to delete.");
+            return;
+        }
+
+        const confirmed = window.confirm("Delete this detection from Who's At My Feeder?");
+        if (!confirmed) {
+            return;
+        }
+
+        const deleteButton = document.getElementById("deleteDetectionButton");
+        const originalButtonText = deleteButton ? deleteButton.textContent : "Delete";
+
+        if (deleteButton) {
+            deleteButton.disabled = true;
+            deleteButton.textContent = "Deleting...";
+        }
+
+        try {
+            const response = await fetch(`/detections/${encodeURIComponent(currentFrigateEvent)}`, {
+                method: "DELETE"
+            });
+
+            if (!response.ok) {
+                let message = "Failed to delete detection.";
+                try {
+                    const payload = await response.json();
+                    if (payload && payload.message) {
+                        message = payload.message;
+                    }
+                } catch (_error) {
+                    // Ignore JSON parse errors and use default message.
+                }
+                throw new Error(message);
+            }
+
+            const snapshotModal = bootstrap.Modal.getInstance(document.getElementById("snapshotModal"));
+            if (snapshotModal) {
+                snapshotModal.hide();
+            }
+
+            window.location.reload();
+        } catch (error) {
+            alert(error.message || "Failed to delete detection.");
+            if (deleteButton) {
+                deleteButton.disabled = false;
+                deleteButton.textContent = originalButtonText;
+            }
+        }
     }
 
     function checkTransparentImage(img) {
