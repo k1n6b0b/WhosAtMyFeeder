@@ -1,33 +1,37 @@
 {% extends "base.html" %}
 
 {% block title %}
-Detections of {{ common_name }} on {{ date }}
+  Detections of {{ common_name }} on {{ date }}
 {% endblock %}
 
 {% block content %}
-  <h1 class="mt-4">Detections of {{ common_name }} on {{ date }}</h1>
-  <table class="table table-striped mt-4">
-    <thead>
+<section class="wamf-panel">
+  <h1 class="wamf-heading">Detections of {{ common_name }} on {{ date }}</h1>
+  <div class="table-responsive">
+    <table class="table table-striped wamf-table">
+      <thead>
       <tr>
         <th>Detection Time</th>
         <th>Camera Name</th>
         <th>Score</th>
         <th>Thumbnail</th>
       </tr>
-    </thead>
-    <tbody>
+      </thead>
+      <tbody>
       {% for record in records %}
-        <tr>
-          <td>{{ record['detection_time'] }}</td>
-          <td>{{ record['camera_name'] }}</td>
-          <td>{{ '%.2f'|format(record['score']) }}</td>
-          <td>
-            <img src="{{ url_for('frigate_thumbnail', frigate_event=record['frigate_event']) }}" alt="Thumbnail" width="100" height="auto" class="thumbnail" onload="checkTransparentImage(this)" onclick="showSnapshot('{{ url_for('frigate_snapshot', frigate_event=record['frigate_event']) }}', '{{ url_for('frigate_clip', frigate_event=record['frigate_event']) }}')" />
-          </td>
-        </tr>
+      <tr>
+        <td>{{ record['detection_time'] }}</td>
+        <td>{{ record['camera_name'] }}</td>
+        <td>{{ '%.2f'|format(record['score']) }}</td>
+        <td>
+          <img src="{{ url_for('frigate_thumbnail', frigate_event=record['frigate_event']) }}" alt="Thumbnail" class="thumbnail" onload="checkTransparentImage(this)" onclick="showSnapshot('{{ url_for('frigate_snapshot', frigate_event=record['frigate_event']) }}', '{{ url_for('frigate_clip', frigate_event=record['frigate_event']) }}', '{{ record['frigate_event'] }}')">
+        </td>
+      </tr>
       {% endfor %}
-    </tbody>
-  </table>
+      </tbody>
+    </table>
+  </div>
+</section>
 
-  {% include 'modals_and_scripts.html' %}
+{% include 'modals_and_scripts.html' %}
 {% endblock %}
