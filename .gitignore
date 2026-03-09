@@ -1,0 +1,20 @@
+# macOS metadata
+._*
+.DS_Store
+
+# Local dev staging dir
+_frigate_overrides/
+
+# Data files (not for version control)
+data/
+*.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Local dev compose override
+docker-compose.dev.yml
