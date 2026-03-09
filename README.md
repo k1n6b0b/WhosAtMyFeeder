@@ -1,4 +1,7 @@
 # Who's At My Feeder?
+
+> **Fork notice:** This is a personal fork of [mmcc-xx/WhosAtMyFeeder](https://github.com/mmcc-xx/WhosAtMyFeeder). All original work and credit belongs to the original author. This fork adds personal deployment improvements and cherry-picked community contributions while the upstream project is inactive.
+
 ## What's New?
 I'm just about to push a significant update. This will require you to...
 * Delete you current speciesid.db database. If you are attached to that data, just move it somewhere else
