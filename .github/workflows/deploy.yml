@@ -23,18 +23,29 @@ jobs:
             --exit-code 1
 
   deploy:
-    name: Deploy to whosatmyfeeder
+    name: Build and deploy whosatmyfeeder
     runs-on: self-hosted
     needs: scan-secrets
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Sync files to overrides
-        run: |
-          rsync -av --delete templates/    DEPLOY_DIR/overrides/templates/
-          rsync -av static/css/styles.css  DEPLOY_DIR/overrides/static/css/styles.css
-          rsync -av webui.py               DEPLOY_DIR/overrides/webui.py
+      - name: Log in to ghcr.io
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-      - name: Restart container
-        run: docker compose -f DEPLOY_DIR/docker-compose.yml restart whosatmyfeeder
+      - name: Build and push image
+        run: |
+          docker build \
+            -t ghcr.io/k1n6b0b/whosatmyfeeder:${{ github.sha }} \
+            -t ghcr.io/k1n6b0b/whosatmyfeeder:latest \
+            .
+          docker push ghcr.io/k1n6b0b/whosatmyfeeder:${{ github.sha }}
+          docker push ghcr.io/k1n6b0b/whosatmyfeeder:latest
+
+      - name: Deploy
+        run: |
+          docker compose -f DEPLOY_DIR/docker-compose.yml pull
+          docker compose -f DEPLOY_DIR/docker-compose.yml up -d

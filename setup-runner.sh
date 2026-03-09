@@ -9,7 +9,7 @@ RUNNER_TOKEN="${1:?Usage: $0 <GITHUB_RUNNER_TOKEN>}"
 REPO="https://github.com/k1n6b0b/WhosAtMyFeeder"
 RUNNER_DIR="$HOME/actions-runner"
 RUNNER_VERSION="2.322.0"
-RUNNER_ARCH="linux-arm64"  # change to linux-x64 if frigate is x86
+RUNNER_ARCH="linux-x64"
 
 mkdir -p "$RUNNER_DIR"
 cd "$RUNNER_DIR"
@@ -26,7 +26,7 @@ sudo ./bin/installdependencies.sh
 echo "==> Installing gitleaks..."
 GITLEAKS_VERSION="8.30.0"
 curl -sSLo gitleaks.tar.gz \
-  "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_arm64.tar.gz"
+  "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
 tar xzf gitleaks.tar.gz gitleaks
 sudo mv gitleaks /usr/local/bin/gitleaks
 rm gitleaks.tar.gz
