@@ -3,7 +3,7 @@ services:
   whosatmyfeeder:
     container_name: whosatmyfeeder
     restart: unless-stopped
-    image: mmcc73/whosatmyfeeder:latest
+    image: ghcr.io/k1n6b0b/whosatmyfeeder:latest
     volumes:
       - ./config:/config
       - ./data:/data
