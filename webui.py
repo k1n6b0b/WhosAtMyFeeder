@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, send_file, abort, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, send_file, abort, send_from_directory, jsonify
 import sqlite3
 import base64
 from datetime import datetime, date
@@ -102,6 +102,13 @@ def show_detections_by_scientific_name(scientific_name, date, end_date):
         records = get_records_for_scientific_name_and_date(scientific_name, date)
         return render_template('detections_by_scientific_name.html', scientific_name=scientific_name, date=date,
                                end_date=end_date, common_name=get_common_name(scientific_name), records=records)
+
+
+@app.route('/api/detections/recent')
+def api_recent_detections():
+    limit = request.args.get('limit', 5, type=int)
+    records = recent_detections(min(limit, 20))  # cap at 20
+    return jsonify(records)
 
 
 @app.route('/daily_summary/<date>')

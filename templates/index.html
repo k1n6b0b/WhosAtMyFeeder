@@ -11,7 +11,7 @@
 {% endblock %}
 
 {% block content %}
-    <h2>Recent Detections</h2>
+    <h2>Recent Detections <span class="live-badge" id="live-badge" title="Auto-updating">&#9679; Live</span></h2>
     <table class="table">
         <thead>
         <tr>
@@ -21,9 +21,9 @@
             <th scope="col">Thumbnail</th>
         </tr>
         </thead>
-        <tbody>
+        <tbody id="recent-detections-tbody">
         {% for detection in recent_detections %}
-            <tr>
+            <tr data-frigate-event="{{ detection.frigate_event }}" data-detection-time="{{ detection.detection_time }}">
                 <td>{{ detection.detection_time }}</td>
                 <td>{{ detection.common_name }}</td>
                 <td>{{ '%.2f'|format(detection.score) }}</td>
@@ -85,5 +85,53 @@
             const selectedDate = input.value;
             window.location.href = `/daily_summary/${selectedDate}`;
         }
+    </script>
+    <script>
+    (function () {
+      const POLL_MS = 15000;
+      const LIMIT   = 5;
+      const tbody   = document.getElementById('recent-detections-tbody');
+
+      function knownEvents() {
+        return new Set(
+          Array.from(tbody.querySelectorAll('tr[data-frigate-event]'))
+               .map(r => r.dataset.frigateEvent)
+        );
+      }
+
+      function buildRow(d) {
+        const thumbUrl   = `/frigate/${d.frigate_event}/thumbnail.jpg`;
+        const snapUrl    = `/frigate/${d.frigate_event}/snapshot.jpg`;
+        const clipUrl    = `/frigate/${d.frigate_event}/clip.mp4`;
+        const tr         = document.createElement('tr');
+        tr.dataset.frigateEvent  = d.frigate_event;
+        tr.dataset.detectionTime = d.detection_time;
+        tr.classList.add('new-detection');
+        tr.innerHTML = `
+          <td>${d.detection_time}</td>
+          <td>${d.common_name}</td>
+          <td>${d.score.toFixed(2)}</td>
+          <td><img src="${thumbUrl}" alt="Thumbnail" width="100" height="auto" class="thumbnail"
+                   onload="checkTransparentImage(this)"
+                   onclick="showSnapshot('${snapUrl}','${clipUrl}')"/></td>`;
+        return tr;
+      }
+
+      async function poll() {
+        if (document.visibilityState === 'hidden') return;
+        try {
+          const res  = await fetch(`/api/detections/recent?limit=${LIMIT}`);
+          if (!res.ok) return;
+          const data = await res.json();
+          const seen  = knownEvents();
+          const fresh = data.filter(d => !seen.has(d.frigate_event));
+          if (fresh.length === 0) return;
+          [...fresh].reverse().forEach(d => tbody.prepend(buildRow(d)));
+          while (tbody.rows.length > LIMIT) tbody.deleteRow(tbody.rows.length - 1);
+        } catch (_) { /* silent — next poll will retry */ }
+      }
+
+      setInterval(poll, POLL_MS);
+    })();
     </script>
 {% endblock %}
