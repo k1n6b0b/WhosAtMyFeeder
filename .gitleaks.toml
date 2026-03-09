@@ -1,0 +1,10 @@
+[extend]
+# Use the default gitleaks ruleset as a base
+useDefault = true
+
+[allowlist]
+description = "Project-level allowlist"
+paths = [
+  # Example config has placeholder values only
+  "config/config.yml.example",
+]

@@ -6,7 +6,8 @@
 _frigate_overrides/
 
 # Config (contains credentials — never commit)
-config/
+config/*
+!config/config.yml.example
 
 # Data files (not for version control)
 data/

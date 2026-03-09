@@ -1,0 +1,40 @@
+name: Deploy to Frigate
+
+on:
+  push:
+    branches:
+      - production
+
+jobs:
+  scan-secrets:
+    name: Scan for secrets
+    runs-on: self-hosted
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        run: |
+          gitleaks detect \
+            --config .gitleaks.toml \
+            --redact \
+            --exit-code 1
+
+  deploy:
+    name: Deploy to whosatmyfeeder
+    runs-on: self-hosted
+    needs: scan-secrets
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Sync files to overrides
+        run: |
+          rsync -av --delete templates/    DEPLOY_DIR/overrides/templates/
+          rsync -av static/css/styles.css  DEPLOY_DIR/overrides/static/css/styles.css
+          rsync -av webui.py               DEPLOY_DIR/overrides/webui.py
+
+      - name: Restart container
+        run: docker compose -f DEPLOY_DIR/docker-compose.yml restart whosatmyfeeder
