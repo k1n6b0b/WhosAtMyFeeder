@@ -5,6 +5,9 @@
 # Local dev staging dir
 _frigate_overrides/
 
+# Config (contains credentials — never commit)
+config/
+
 # Data files (not for version control)
 data/
 *.db
