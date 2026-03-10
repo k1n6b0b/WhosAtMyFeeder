@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, send_file, abort, send_from_directory, jsonify
+import os
 import sqlite3
 import base64
 from datetime import datetime, date
@@ -154,7 +155,7 @@ def delete_detection(frigate_event):
 
 def load_config():
     global config
-    file_path = './config/config.yml'
+    file_path = os.environ.get('WHOSATMYFEEDER_CONFIG', './config/config.yml')
     with open(file_path, 'r') as config_file:
         config = yaml.safe_load(config_file)
 
