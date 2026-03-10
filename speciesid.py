@@ -201,9 +201,18 @@ def on_message(client, userdata, message):
 
                 else:
                     sub_label_data = after_data.get('sub_label')
-                    if sub_label_data and isinstance(sub_label_data, list) and len(sub_label_data) >= 2:
+                    # sub_label is ["Common Name", score] (Frigate built-in classifier)
+                    # or a plain string (some Frigate versions / API-set labels)
+                    if isinstance(sub_label_data, list) and len(sub_label_data) >= 2:
                         frigate_common = sub_label_data[0]
                         frigate_score = float(sub_label_data[1])
+                    elif isinstance(sub_label_data, str) and sub_label_data:
+                        frigate_common = sub_label_data
+                        frigate_score = score  # use WAMF's own score
+                    else:
+                        frigate_common = None
+                        frigate_score = None
+                    if frigate_common:
                         scientific_name = get_scientific_name(frigate_common)
                         if scientific_name:
                             print(f"WAMF below threshold; using Frigate sub_label: {frigate_common} ({frigate_score:.2f})", flush=True)

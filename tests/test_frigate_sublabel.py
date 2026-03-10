@@ -232,6 +232,23 @@ def test_fallback_skipped_when_name_unknown(fresh_db):
     assert count == 0
 
 
+def test_fallback_used_when_sub_label_is_string(fresh_db):
+    """sub_label is a plain string (some Frigate versions) → fallback writes using WAMF's score."""
+    _run_on_message(fresh_db, wamf_score=0.67, sub_label="American Robin")
+
+    conn = sqlite3.connect(fresh_db)
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT category_name, score FROM detections WHERE frigate_event = 'evt-fallback-001'"
+    )
+    row = cursor.fetchone()
+    conn.close()
+
+    assert row is not None, "Expected a row inserted via string sub_label fallback"
+    assert row[0] == 'frigate_classified'
+    assert abs(row[1] - 0.67) < 0.001  # score comes from WAMF classifier
+
+
 def test_fallback_skipped_when_sub_label_null(fresh_db):
     """sub_label is null → no DB write."""
     _run_on_message(fresh_db, wamf_score=0.13, sub_label=None)
