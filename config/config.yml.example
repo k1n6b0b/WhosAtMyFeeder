@@ -12,6 +12,13 @@ frigate:
   camera:
     - your-camera-name
   object: bird
+# MQTT topics published by whosatmyfeeder:
+#   whosatmyfeeder/detections              - common name on every detection above threshold
+#   whosatmyfeeder/new_species/common_name     \
+#   whosatmyfeeder/new_species/scientific_name  | published once per species,
+#   whosatmyfeeder/new_species/score            | first detection ever only
+#   whosatmyfeeder/new_species/camera           | (retained by broker)
+#   whosatmyfeeder/new_species/frigate_event   /
 classification:
   model: model.tflite
   threshold: 0.7

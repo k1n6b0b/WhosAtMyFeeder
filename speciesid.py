@@ -57,6 +57,15 @@ def on_disconnect(client, userdata, rc):
         print("Expected disconnection", flush=True)
 
 
+def publish_new_species(client, common_name, scientific_name, score, camera_name, frigate_event):
+    base = 'whosatmyfeeder/new_species'
+    client.publish(f'{base}/common_name',     common_name,           qos=0, retain=True)
+    client.publish(f'{base}/scientific_name', scientific_name,       qos=0, retain=True)
+    client.publish(f'{base}/score',           str(round(score, 4)),  qos=0, retain=True)
+    client.publish(f'{base}/camera',          camera_name,           qos=0, retain=True)
+    client.publish(f'{base}/frigate_event',   frigate_event,         qos=0, retain=True)
+
+
 def set_sublabel(frigate_url, frigate_event, sublabel):
     post_url = frigate_url + "/api/events/" + frigate_event + "/sub_label"
 
@@ -157,22 +166,30 @@ def on_message(client, userdata, message):
                     if result is None:
                         # Insert a new record if it doesn't exist
                         print("No record yet for this event. Storing.", flush=True)
-                        cursor.execute("""  
-                            INSERT INTO detections (detection_time, detection_index, score,  
-                            display_name, category_name, frigate_event, camera_name) VALUES (?, ?, ?, ?, ?, ?, ?)  
+                        cursor.execute("""
+                            INSERT INTO detections (detection_time, detection_index, score,
+                            display_name, category_name, frigate_event, camera_name) VALUES (?, ?, ?, ?, ?, ?, ?)
                             """, (formatted_start_time, index, score, display_name, category_name, frigate_event, after_data['camera']))
                         # set the sublabel
-                        set_sublabel(frigate_url, frigate_event, get_common_name(display_name))
+                        common_name = get_common_name(display_name)
+                        set_sublabel(frigate_url, frigate_event, common_name)
+                        # publish to new_species topics if this is the first ever detection of this species
+                        cursor.execute(
+                            "SELECT COUNT(*) FROM detections WHERE display_name = ?", (display_name,)
+                        )
+                        if cursor.fetchone()[0] == 1:
+                            print(f"New species detected for the first time: {common_name}", flush=True)
+                            publish_new_species(client, common_name, display_name, score, after_data['camera'], frigate_event)
                     else:
                         print("There is already a record for this event. Checking score", flush=True)
                         # Update the existing record if the new score is higher
                         existing_score = result[3]
                         if score > existing_score:
                             print("New score is higher. Updating record with higher score.", flush=True)
-                            cursor.execute("""  
-                                UPDATE detections  
-                                SET detection_time = ?, detection_index = ?, score = ?, display_name = ?, category_name = ?  
-                                WHERE frigate_event = ?  
+                            cursor.execute("""
+                                UPDATE detections
+                                SET detection_time = ?, detection_index = ?, score = ?, display_name = ?, category_name = ?
+                                WHERE frigate_event = ?
                                 """, (formatted_start_time, index, score, display_name, category_name, frigate_event))
                             # set the sublabel
                             set_sublabel(frigate_url, frigate_event, get_common_name(display_name))
