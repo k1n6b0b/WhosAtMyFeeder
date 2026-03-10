@@ -123,12 +123,14 @@ def on_message(client, userdata, message):
                 "crop": 1,
                 "quality": 95
             }
+            print("Fetching snapshot...", flush=True)
             try:
                 response = requests.get(snapshot_url, params=params, timeout=2)
             except requests.exceptions.RequestException as e:
                 print(f"Error: Could not retrieve the image (request error): {e}", flush=True)
                 conn.close()
                 return
+            print(f"Snapshot HTTP {response.status_code}", flush=True)
             # Check if the request was successful (HTTP status code 200)
             if response.status_code == 200:
                 # Open the image from the response content and convert it to a NumPy array
@@ -151,6 +153,7 @@ def on_message(client, userdata, message):
 
                 np_arr = np.array(padded_image)
 
+                print("Classifying...", flush=True)
                 categories = classify(np_arr)
                 category = categories[0]
                 index = category.index
