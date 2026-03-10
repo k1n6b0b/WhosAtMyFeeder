@@ -5,10 +5,11 @@ speciesid.py has heavy ML imports (numpy, cv2, tflite_support, PIL) that are
 not available in the test environment. We patch them in sys.modules before
 importing speciesid so only the functions we care about are exercised.
 """
+import json
 import os
 import sqlite3
 import sys
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -202,3 +203,70 @@ def test_score_update_does_not_add_row(fresh_db):
     conn.close()
 
     assert count == 1
+
+
+# ---------------------------------------------------------------------------
+# Threshold gating
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("score,threshold,expect_write", [
+    (0.13, 0.7, False),   # below threshold (real-world: Night Heron scored 0.13)
+    (0.70, 0.7, False),   # exactly at threshold — strict > means no write
+    (0.92, 0.7, True),    # above threshold — should write to DB
+])
+def test_threshold_gating(fresh_db, score, threshold, expect_write):
+    """score must be strictly > threshold for a detection to be written to the DB."""
+    speciesid.firstmessage = False
+    speciesid.config = {
+        'frigate': {
+            'camera': ['birdcam'],
+            'frigate_url': 'http://localhost:5000',
+        },
+        'classification': {'threshold': threshold},
+    }
+
+    message = MagicMock()
+    message.payload = json.dumps({
+        'after': {
+            'camera': 'birdcam',
+            'label': 'bird',
+            'id': 'evt-threshold-test',
+            'start_time': 1700000000.0,
+        }
+    })
+
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.content = b'fakejpegdata'
+
+    mock_image = MagicMock()
+    mock_image.size = (100, 100)
+
+    fake_category = MagicMock()
+    fake_category.index = 42          # not 964 (background)
+    fake_category.score = score
+    fake_category.display_name = 'Turdus migratorius'
+    fake_category.category_name = 'bird'
+
+    client = MagicMock()
+
+    with patch.object(speciesid, 'DBPATH', fresh_db), \
+         patch('speciesid.requests.get', return_value=mock_response), \
+         patch('speciesid.Image') as mock_Image, \
+         patch('speciesid.classify', return_value=[fake_category]), \
+         patch('speciesid.get_common_name', return_value='American Robin'), \
+         patch('speciesid.set_sublabel'):
+        mock_Image.open.return_value = mock_image
+        speciesid.on_message(client, None, message)
+
+    conn = sqlite3.connect(fresh_db)
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM detections")
+    count = cursor.fetchone()[0]
+    conn.close()
+
+    if expect_write:
+        assert count == 1
+    else:
+        assert count == 0
+        client.publish.assert_not_called()
