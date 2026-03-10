@@ -122,18 +122,18 @@ def test_publish_new_species_correct_payloads():
     payloads = {c.args[0]: c.args[1] for c in client.publish.call_args_list}
     assert payloads["whosatmyfeeder/new_species/common_name"] == "American Robin"
     assert payloads["whosatmyfeeder/new_species/scientific_name"] == "Turdus migratorius"
-    assert payloads["whosatmyfeeder/new_species/score"] == "0.9234"
+    assert payloads["whosatmyfeeder/new_species/score"] == "0.92"
     assert payloads["whosatmyfeeder/new_species/camera"] == "birdcam"
     assert payloads["whosatmyfeeder/new_species/frigate_event"] == "evt-001"
 
 
-def test_publish_new_species_score_rounded_to_4dp():
+def test_publish_new_species_score_is_2dp():
     client = MagicMock()
     speciesid.publish_new_species(
         client, "Robin", "Turdus migratorius", 0.123456789, "birdcam", "evt-001"
     )
     payloads = {c.args[0]: c.args[1] for c in client.publish.call_args_list}
-    assert payloads["whosatmyfeeder/new_species/score"] == "0.1235"
+    assert payloads["whosatmyfeeder/new_species/score"] == "0.12"
 
 
 # ---------------------------------------------------------------------------

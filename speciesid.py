@@ -61,7 +61,7 @@ def publish_new_species(client, common_name, scientific_name, score, camera_name
     base = 'whosatmyfeeder/new_species'
     client.publish(f'{base}/common_name',     common_name,           qos=0, retain=True)
     client.publish(f'{base}/scientific_name', scientific_name,       qos=0, retain=True)
-    client.publish(f'{base}/score',           str(round(score, 4)),  qos=0, retain=True)
+    client.publish(f'{base}/score',           f'{score:.2f}',        qos=0, retain=True)
     client.publish(f'{base}/camera',          camera_name,           qos=0, retain=True)
     client.publish(f'{base}/frigate_event',   frigate_event,         qos=0, retain=True)
 
