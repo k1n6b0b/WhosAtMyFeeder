@@ -85,7 +85,7 @@ def set_sublabel(frigate_url, frigate_event, sublabel):
 
     # Submit the POST request with the JSON payload
     try:
-        response = requests.post(post_url, data=json.dumps(payload), headers=headers, timeout=10)
+        response = requests.post(post_url, data=json.dumps(payload), headers=headers, timeout=2)
     except requests.exceptions.RequestException as e:
         print(f"Failed to set sublabel (request error): {e}", flush=True)
         return
@@ -124,7 +124,7 @@ def on_message(client, userdata, message):
                 "quality": 95
             }
             try:
-                response = requests.get(snapshot_url, params=params, timeout=10)
+                response = requests.get(snapshot_url, params=params, timeout=2)
             except requests.exceptions.RequestException as e:
                 print(f"Error: Could not retrieve the image (request error): {e}", flush=True)
                 conn.close()
