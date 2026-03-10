@@ -5,13 +5,18 @@ speciesid.py has heavy ML imports (numpy, cv2, tflite_support, PIL) that are
 not available in the test environment. We patch them in sys.modules before
 importing speciesid so only the functions we care about are exercised.
 """
+import os
 import sqlite3
 import sys
 from unittest.mock import MagicMock
 
 import pytest
 
-# Patch heavy deps before importing speciesid
+# webui calls load_config() at module level; point it at the example config
+# so it doesn't fail when speciesid (which imports webui) is imported here.
+os.environ.setdefault('WHOSATMYFEEDER_CONFIG', 'config/config.yml.example')
+
+# Patch heavy ML deps before importing speciesid (not available in test env)
 for _mod in [
     "numpy", "cv2",
     "tflite_support",
