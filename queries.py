@@ -6,6 +6,31 @@ DBPATH = './data/speciesid.db'
 NAMEDBPATH = './birdnames.db'
 
 
+def get_scientific_name(common_name):
+    conn = sqlite3.connect(NAMEDBPATH)
+    cursor = conn.cursor()
+    # Try exact match first
+    cursor.execute(
+        "SELECT scientific_name FROM birdnames WHERE common_name = ?", (common_name,)
+    )
+    result = cursor.fetchone()
+    if result:
+        conn.close()
+        return result[0]
+    # If string is exactly 20 chars it may be truncated — try prefix match
+    if len(common_name) == 20:
+        cursor.execute(
+            "SELECT scientific_name FROM birdnames WHERE common_name LIKE ?",
+            (common_name + '%',)
+        )
+        rows = cursor.fetchall()
+        conn.close()
+        # Only use prefix match if exactly one species starts with this prefix
+        return rows[0][0] if len(rows) == 1 else None
+    conn.close()
+    return None
+
+
 def get_common_name(scientific_name):
     conn = sqlite3.connect(NAMEDBPATH)
     cursor = conn.cursor()

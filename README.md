@@ -19,6 +19,7 @@ Who's At My Feeder? is a sidecar app for [Frigate NVR](https://frigate.video/) t
 - **MQTT TLS support** — encrypted broker connections with optional certificate verification (cherry-picked from upstream [PR #30](https://github.com/mmcc-xx/WhosAtMyFeeder/pull/30) by [@Adminiuga](https://github.com/Adminiuga))
 - **MQTT detection publish** — publishes identified species to `whosatmyfeeder/detections` on each detection (cherry-picked from upstream [PR #46](https://github.com/mmcc-xx/WhosAtMyFeeder/pull/46) by [@rw377](https://github.com/rw377))
 - **MQTT new species alert** — publishes to a `whosatmyfeeder/new_species/*` topic hierarchy the first time a species is ever detected; ideal for Home Assistant automations. Topics: `common_name`, `scientific_name`, `score`, `camera`, `frigate_event` (all retained by broker)
+- **Frigate sub-label fallback** — when WAMF's classifier scores below threshold, falls back to Frigate's built-in bird classification (`sub_label`) so low-confidence sightings are still recorded; handles Frigate's 20-character truncation via prefix matching
 - Python 3.11 base image (upstream uses 3.8, which is EOL)
 - Image published to GitHub Container Registry (ghcr.io) with SHA-pinned deploys and automatic rollback support
 - CI pipeline with secret scanning (gitleaks), vulnerability scanning (Trivy), and automated tests

@@ -19,6 +19,9 @@ frigate:
 #   whosatmyfeeder/new_species/score            | first detection ever only
 #   whosatmyfeeder/new_species/camera           | (retained by broker)
 #   whosatmyfeeder/new_species/frigate_event   /
+# Frigate sub-label fallback: if WAMF's classifier is below threshold,
+# WAMF will use Frigate's built-in bird classification sub_label if present.
+# Enable in Frigate: https://docs.frigate.video/configuration/bird_classification
 classification:
   model: model.tflite
   threshold: 0.7

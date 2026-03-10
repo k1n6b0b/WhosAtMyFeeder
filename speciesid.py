@@ -16,7 +16,7 @@ import json
 import requests
 from PIL import Image, ImageOps
 from io import BytesIO
-from queries import get_common_name
+from queries import get_common_name, get_scientific_name
 
 classifier = None
 config = None
@@ -199,6 +199,41 @@ def on_message(client, userdata, message):
                     # Commit the changes
                     conn.commit()
 
+                else:
+                    sub_label_data = after_data.get('sub_label')
+                    if sub_label_data and isinstance(sub_label_data, list) and len(sub_label_data) >= 2:
+                        frigate_common = sub_label_data[0]
+                        frigate_score = float(sub_label_data[1])
+                        scientific_name = get_scientific_name(frigate_common)
+                        if scientific_name:
+                            print(f"WAMF below threshold; using Frigate sub_label: {frigate_common} ({frigate_score:.2f})", flush=True)
+                            cursor = conn.cursor()
+                            cursor.execute("SELECT * FROM detections WHERE frigate_event = ?", (frigate_event,))
+                            result = cursor.fetchone()
+                            if result is None:
+                                cursor.execute("""
+                                    INSERT INTO detections (detection_time, detection_index, score,
+                                    display_name, category_name, frigate_event, camera_name)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                                """, (formatted_start_time, -1, frigate_score, scientific_name,
+                                      'frigate_classified', frigate_event, after_data['camera']))
+                                set_sublabel(frigate_url, frigate_event, frigate_common)
+                                cursor.execute(
+                                    "SELECT COUNT(*) FROM detections WHERE display_name = ?", (scientific_name,)
+                                )
+                                if cursor.fetchone()[0] == 1:
+                                    print(f"New species (via Frigate sub_label): {frigate_common}", flush=True)
+                                    publish_new_species(client, frigate_common, scientific_name,
+                                                       frigate_score, after_data['camera'], frigate_event)
+                            else:
+                                existing_score = result[3]
+                                if frigate_score > existing_score:
+                                    cursor.execute("""
+                                        UPDATE detections SET score = ?, display_name = ?, category_name = ?
+                                        WHERE frigate_event = ?
+                                    """, (frigate_score, scientific_name, 'frigate_classified', frigate_event))
+                                    set_sublabel(frigate_url, frigate_event, frigate_common)
+                            conn.commit()
 
             else:
                 print(f"Error: Could not retrieve the image. Status code: {response.status_code}", flush=True)
