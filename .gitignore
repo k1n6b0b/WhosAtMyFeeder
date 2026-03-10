@@ -19,6 +19,8 @@ __pycache__/
 *.pyo
 .venv/
 venv/
+.coverage
+htmlcov/
 
 # Local dev compose override
 docker-compose.dev.yml

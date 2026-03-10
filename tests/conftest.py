@@ -120,16 +120,15 @@ def patched_queries(tmp_dbs):
 def flask_client(tmp_dbs, patched_queries):
     """
     Return a Flask test client with webui's globals patched to use temp DBs.
-    load_config() runs at import time, so we reload with a patched config path.
+    Set WHOSATMYFEEDER_CONFIG before importing webui so load_config() (which
+    runs at module level) reads the temp config instead of the missing default.
     """
+    import os
+    os.environ['WHOSATMYFEEDER_CONFIG'] = tmp_dbs["config"]
+
     import webui
     webui.DBPATH = tmp_dbs["det_db"]
     webui.NAMEDBPATH = tmp_dbs["name_db"]
-
-    # Reload config from temp file
-    import yaml
-    with open(tmp_dbs["config"]) as f:
-        webui.config = yaml.safe_load(f)
 
     webui.app.config["TESTING"] = True
     with webui.app.test_client() as client:
