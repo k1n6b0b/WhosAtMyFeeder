@@ -185,7 +185,8 @@ def _on_message_inner(client, userdata, message):
                 print(result_text, flush=True)
 
                 if index != 964 and score > config['classification']['threshold']:  # 964 is "background"
-                    client.publish('whosatmyfeeder/detections', get_common_name(display_name), qos=0, retain=False)
+                    common_name = get_common_name(display_name) or display_name
+                    client.publish('whosatmyfeeder/detections', common_name, qos=0, retain=False)
                     cursor = conn.cursor()
 
                     # Check if a record with the given frigate_event exists
@@ -200,7 +201,6 @@ def _on_message_inner(client, userdata, message):
                             display_name, category_name, frigate_event, camera_name) VALUES (?, ?, ?, ?, ?, ?, ?)
                             """, (formatted_start_time, index, score, display_name, category_name, frigate_event, after_data['camera']))
                         # set the sublabel
-                        common_name = get_common_name(display_name)
                         set_sublabel(frigate_url, frigate_event, common_name)
                         # publish to new_species topics if this is the first ever detection of this species
                         cursor.execute(
@@ -221,7 +221,7 @@ def _on_message_inner(client, userdata, message):
                                 WHERE frigate_event = ?
                                 """, (formatted_start_time, index, score, display_name, category_name, frigate_event))
                             # set the sublabel
-                            set_sublabel(frigate_url, frigate_event, get_common_name(display_name))
+                            set_sublabel(frigate_url, frigate_event, get_common_name(display_name) or display_name)
                         else:
                             print("New score is lower.", flush=True)
 

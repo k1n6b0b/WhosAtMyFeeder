@@ -12,7 +12,7 @@ def test_get_common_name_found(patched_queries):
 
 def test_get_common_name_not_found(patched_queries):
     result = patched_queries.get_common_name("Unknown species")
-    assert result == "No common name found."
+    assert result is None
 
 
 # ---------------------------------------------------------------------------
