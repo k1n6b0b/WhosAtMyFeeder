@@ -38,47 +38,48 @@ def index():
 def frigate_thumbnail(frigate_event):
     frigate_url = config['frigate']['frigate_url']
     try:
-        response = requests.get(f'{frigate_url}/api/events/{frigate_event}/thumbnail.jpg', stream=True)
-
+        response = requests.get(
+            f'{frigate_url}/api/events/{frigate_event}/thumbnail.jpg',
+            stream=True, timeout=5)
         if response.status_code == 200:
             return send_file(response.raw, mimetype=response.headers['Content-Type'])
         else:
             return send_from_directory('static/images', '1x1.png', mimetype='image/png')
     except Exception as e:
-        print(f"Error fetching image from frigate: {e}", flush=True)
-        abort(500)
+        print(f"Error fetching thumbnail from frigate: {e}", flush=True)
+        return send_from_directory('static/images', '1x1.png', mimetype='image/png')
 
 
 @app.route('/frigate/<frigate_event>/snapshot.jpg')
 def frigate_snapshot(frigate_event):
     frigate_url = config['frigate']['frigate_url']
     try:
-        print("Getting snapshot from Frigate", flush=True)
-        response = requests.get(f'{frigate_url}/api/events/{frigate_event}/snapshot.jpg', stream=True)
-
+        response = requests.get(
+            f'{frigate_url}/api/events/{frigate_event}/snapshot.jpg',
+            stream=True, timeout=5)
         if response.status_code == 200:
             return send_file(response.raw, mimetype=response.headers['Content-Type'])
         else:
             return send_from_directory('static/images', '1x1.png', mimetype='image/png')
     except Exception as e:
-        print(f"Error fetching image from frigate: {e}", flush=True)
-        abort(500)
+        print(f"Error fetching snapshot from frigate: {e}", flush=True)
+        return send_from_directory('static/images', '1x1.png', mimetype='image/png')
 
 
 @app.route('/frigate/<frigate_event>/clip.mp4')
 def frigate_clip(frigate_event):
     frigate_url = config['frigate']['frigate_url']
     try:
-        print("Getting snapshot from Frigate", flush=True)
-        response = requests.get(f'{frigate_url}/api/events/{frigate_event}/clip.mp4', stream=True)
-
+        response = requests.get(
+            f'{frigate_url}/api/events/{frigate_event}/clip.mp4',
+            stream=True, timeout=30)
         if response.status_code == 200:
             return send_file(response.raw, mimetype=response.headers['Content-Type'])
         else:
             return send_from_directory('static/images', '1x1.png', mimetype='image/png')
     except Exception as e:
         print(f"Error fetching clip from frigate: {e}", flush=True)
-        abort(500)
+        return send_from_directory('static/images', '1x1.png', mimetype='image/png')
 
 
 @app.route('/detections/by_hour/<date>/<int:hour>')
@@ -90,10 +91,11 @@ def show_detections_by_hour(date, hour):
 @app.route('/detections/by_scientific_name/<scientific_name>/<date>', defaults={'end_date': None})
 @app.route('/detections/by_scientific_name/<scientific_name>/<date>/<end_date>')
 def show_detections_by_scientific_name(scientific_name, date, end_date):
-    if end_date is None:
-        records = get_records_for_scientific_name_and_date(scientific_name, date)
-        return render_template('detections_by_scientific_name.html', scientific_name=scientific_name, date=date,
-                               end_date=end_date, common_name=get_common_name(scientific_name), records=records)
+    if end_date is not None:
+        return jsonify({"error": "Date range queries are not yet implemented."}), 501
+    records = get_records_for_scientific_name_and_date(scientific_name, date)
+    return render_template('detections_by_scientific_name.html', scientific_name=scientific_name, date=date,
+                           end_date=end_date, common_name=get_common_name(scientific_name), records=records)
 
 
 @app.route('/api/detections/recent')

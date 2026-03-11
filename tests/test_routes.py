@@ -127,3 +127,52 @@ def test_detections_by_hour_returns_200(flask_client):
 def test_detections_by_hour_empty_hour_returns_200(flask_client):
     response = flask_client.get("/detections/by_hour/2024-06-01/23")
     assert response.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# /frigate proxy routes — timeout / error handling
+# ---------------------------------------------------------------------------
+
+def test_frigate_thumbnail_timeout_returns_fallback(flask_client, monkeypatch):
+    """A timeout on the Frigate request returns the 1x1 fallback, not 500."""
+    import requests as req
+    def fake_get(*a, **kw):
+        raise req.exceptions.Timeout("timed out")
+    monkeypatch.setattr("webui.requests.get", fake_get)
+    response = flask_client.get("/frigate/evt-test/thumbnail.jpg")
+    assert response.status_code == 200
+    assert response.content_type == "image/png"
+
+
+def test_frigate_snapshot_timeout_returns_fallback(flask_client, monkeypatch):
+    import requests as req
+    def fake_get(*a, **kw):
+        raise req.exceptions.Timeout("timed out")
+    monkeypatch.setattr("webui.requests.get", fake_get)
+    response = flask_client.get("/frigate/evt-test/snapshot.jpg")
+    assert response.status_code == 200
+    assert response.content_type == "image/png"
+
+
+def test_frigate_clip_timeout_returns_fallback(flask_client, monkeypatch):
+    import requests as req
+    def fake_get(*a, **kw):
+        raise req.exceptions.Timeout("timed out")
+    monkeypatch.setattr("webui.requests.get", fake_get)
+    response = flask_client.get("/frigate/evt-test/clip.mp4")
+    assert response.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# /detections/by_scientific_name — end_date handling
+# ---------------------------------------------------------------------------
+
+def test_by_scientific_name_no_end_date_returns_200(flask_client):
+    response = flask_client.get("/detections/by_scientific_name/Turdus%20migratorius/2024-06-01")
+    assert response.status_code == 200
+
+
+def test_by_scientific_name_with_end_date_returns_501(flask_client):
+    """end_date path is not implemented — must return 501, not 200/500."""
+    response = flask_client.get("/detections/by_scientific_name/Turdus%20migratorius/2024-06-01/2024-06-07")
+    assert response.status_code == 501
