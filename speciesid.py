@@ -364,6 +364,14 @@ def main():
     flask_process.start()
     mqtt_process.start()
 
+    # Watchdog: if the MQTT subprocess dies, restart it. Flask dying is fatal.
+    while flask_process.is_alive():
+        mqtt_process.join(timeout=30)
+        if not mqtt_process.is_alive():
+            print("WARNING: MQTT subprocess exited unexpectedly — restarting", flush=True)
+            mqtt_process = multiprocessing.Process(target=run_mqtt_client)
+            mqtt_process.start()
+
     flask_process.join()
     mqtt_process.join()
 
