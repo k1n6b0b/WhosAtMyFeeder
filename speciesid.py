@@ -150,9 +150,6 @@ def _on_message_inner(client, userdata, message):
                     # Open the image from the response content and convert it to a NumPy array
                     image = Image.open(BytesIO(response.content))
 
-                    file_path = "fullsized.jpg"  # Change this to your desired file path
-                    image.save(file_path, format="JPEG")
-
                     # Resize the image while maintaining its aspect ratio
                     max_size = (224, 224)
                     image.thumbnail(max_size)
@@ -161,9 +158,6 @@ def _on_message_inner(client, userdata, message):
                     padded_image = ImageOps.expand(image, border=((max_size[0] - image.size[0]) // 2,
                                                                   (max_size[1] - image.size[1]) // 2),
                                                    fill='black')
-
-                    file_path = "shrunk.jpg"  # Change this to your desired file path
-                    padded_image.save(file_path, format="JPEG")
 
                     np_arr = np.array(padded_image)
 
