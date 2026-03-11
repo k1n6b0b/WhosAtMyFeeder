@@ -116,171 +116,168 @@ def on_message(client, userdata, message):
 
 def _on_message_inner(client, userdata, message):
     conn = sqlite3.connect(DBPATH)
+    try:
+        global firstmessage
+        if not firstmessage:
+            # Convert the MQTT payload to a Python dictionary
+            payload_dict = json.loads(message.payload)
 
-    global firstmessage
-    if not firstmessage:
+            # Extract the 'after' element data and store it in a dictionary
+            after_data = payload_dict.get('after', {})
 
-        # Convert the MQTT payload to a Python dictionary
-        payload_dict = json.loads(message.payload)
+            if (after_data['camera'] in config['frigate']['camera'] and
+                    after_data['label'] == 'bird'):
 
-        # Extract the 'after' element data and store it in a dictionary
-        after_data = payload_dict.get('after', {})
+                frigate_event = after_data['id']
+                frigate_url = config['frigate']['frigate_url']
+                snapshot_url = frigate_url + "/api/events/" + frigate_event + "/snapshot.jpg"
 
-        if (after_data['camera'] in config['frigate']['camera'] and
-                after_data['label'] == 'bird'):
+                print("Getting image for event: " + frigate_event, flush=True)
+                print("Here's the URL: " + snapshot_url, flush=True)
+                params = {
+                    "crop": 1,
+                    "quality": 95
+                }
+                print("Fetching snapshot...", flush=True)
+                try:
+                    response = requests.get(snapshot_url, params=params, timeout=2)
+                except requests.exceptions.RequestException as e:
+                    print(f"Error: Could not retrieve the image (request error): {e}", flush=True)
+                    return
+                print(f"Snapshot HTTP {response.status_code}", flush=True)
 
-            frigate_event = after_data['id']
-            frigate_url = config['frigate']['frigate_url']
-            snapshot_url = frigate_url + "/api/events/" + frigate_event + "/snapshot.jpg"
+                if response.status_code == 200:
+                    # Open the image from the response content and convert it to a NumPy array
+                    image = Image.open(BytesIO(response.content))
 
-            print("Getting image for event: " + frigate_event, flush=True)
-            print("Here's the URL: " + snapshot_url, flush=True)
-            # Send a GET request to the snapshot_url
-            params = {
-                "crop": 1,
-                "quality": 95
-            }
-            print("Fetching snapshot...", flush=True)
-            try:
-                response = requests.get(snapshot_url, params=params, timeout=2)
-            except requests.exceptions.RequestException as e:
-                print(f"Error: Could not retrieve the image (request error): {e}", flush=True)
-                conn.close()
-                return
-            print(f"Snapshot HTTP {response.status_code}", flush=True)
-            # Check if the request was successful (HTTP status code 200)
-            if response.status_code == 200:
-                # Open the image from the response content and convert it to a NumPy array
-                image = Image.open(BytesIO(response.content))
+                    file_path = "fullsized.jpg"  # Change this to your desired file path
+                    image.save(file_path, format="JPEG")
 
-                file_path = "fullsized.jpg"  # Change this to your desired file path
-                image.save(file_path, format="JPEG")  # You can change the format if needed
+                    # Resize the image while maintaining its aspect ratio
+                    max_size = (224, 224)
+                    image.thumbnail(max_size)
 
-                # Resize the image while maintaining its aspect ratio
-                max_size = (224, 224)
-                image.thumbnail(max_size)
+                    # Pad the image to fill the remaining space
+                    padded_image = ImageOps.expand(image, border=((max_size[0] - image.size[0]) // 2,
+                                                                  (max_size[1] - image.size[1]) // 2),
+                                                   fill='black')
 
-                # Pad the image to fill the remaining space
-                padded_image = ImageOps.expand(image, border=((max_size[0] - image.size[0]) // 2,
-                                                              (max_size[1] - image.size[1]) // 2),
-                                               fill='black')  # Change the fill color if necessary
+                    file_path = "shrunk.jpg"  # Change this to your desired file path
+                    padded_image.save(file_path, format="JPEG")
 
-                file_path = "shrunk.jpg"  # Change this to your desired file path
-                padded_image.save(file_path, format="JPEG")  # You can change the format if needed
+                    np_arr = np.array(padded_image)
 
-                np_arr = np.array(padded_image)
+                    print("Classifying...", flush=True)
+                    categories = classify(np_arr)
+                    category = categories[0]
+                    index = category.index
+                    score = category.score
+                    display_name = category.display_name
+                    category_name = category.category_name
 
-                print("Classifying...", flush=True)
-                categories = classify(np_arr)
-                category = categories[0]
-                index = category.index
-                score = category.score
-                display_name = category.display_name
-                category_name = category.category_name
+                    start_time = datetime.fromtimestamp(after_data['start_time'])
+                    formatted_start_time = start_time.strftime("%Y-%m-%d %H:%M:%S")
+                    result_text = formatted_start_time + "\n"
+                    result_text = result_text + str(category)
+                    print(result_text, flush=True)
 
-                start_time = datetime.fromtimestamp(after_data['start_time'])
-                formatted_start_time = start_time.strftime("%Y-%m-%d %H:%M:%S")
-                result_text = formatted_start_time + "\n"
-                result_text = result_text + str(category)
-                print(result_text, flush=True)
+                    if index != 964 and score > config['classification']['threshold']:  # 964 is "background"
+                        common_name = get_common_name(display_name) or display_name
+                        client.publish('whosatmyfeeder/detections', common_name, qos=0, retain=False)
+                        cursor = conn.cursor()
 
-                if index != 964 and score > config['classification']['threshold']:  # 964 is "background"
-                    common_name = get_common_name(display_name) or display_name
-                    client.publish('whosatmyfeeder/detections', common_name, qos=0, retain=False)
-                    cursor = conn.cursor()
+                        # Check if a record with the given frigate_event exists
+                        cursor.execute("SELECT * FROM detections WHERE frigate_event = ?", (frigate_event,))
+                        result = cursor.fetchone()
 
-                    # Check if a record with the given frigate_event exists
-                    cursor.execute("SELECT * FROM detections WHERE frigate_event = ?", (frigate_event,))
-                    result = cursor.fetchone()
-
-                    if result is None:
-                        # Insert a new record if it doesn't exist
-                        print("No record yet for this event. Storing.", flush=True)
-                        cursor.execute("""
-                            INSERT INTO detections (detection_time, detection_index, score,
-                            display_name, category_name, frigate_event, camera_name) VALUES (?, ?, ?, ?, ?, ?, ?)
-                            """, (formatted_start_time, index, score, display_name, category_name, frigate_event, after_data['camera']))
-                        # set the sublabel
-                        set_sublabel(frigate_url, frigate_event, common_name)
-                        # publish to new_species topics if this is the first ever detection of this species
-                        cursor.execute(
-                            "SELECT COUNT(*) FROM detections WHERE display_name = ?", (display_name,)
-                        )
-                        if cursor.fetchone()[0] == 1:
-                            print(f"New species detected for the first time: {common_name}", flush=True)
-                            publish_new_species(client, common_name, display_name, score, after_data['camera'], frigate_event)
-                    else:
-                        print("There is already a record for this event. Checking score", flush=True)
-                        # Update the existing record if the new score is higher
-                        existing_score = result[3]
-                        if score > existing_score:
-                            print("New score is higher. Updating record with higher score.", flush=True)
+                        if result is None:
+                            # Insert a new record if it doesn't exist
+                            print("No record yet for this event. Storing.", flush=True)
                             cursor.execute("""
-                                UPDATE detections
-                                SET detection_time = ?, detection_index = ?, score = ?, display_name = ?, category_name = ?
-                                WHERE frigate_event = ?
-                                """, (formatted_start_time, index, score, display_name, category_name, frigate_event))
+                                INSERT INTO detections (detection_time, detection_index, score,
+                                display_name, category_name, frigate_event, camera_name) VALUES (?, ?, ?, ?, ?, ?, ?)
+                                """, (formatted_start_time, index, score, display_name, category_name, frigate_event, after_data['camera']))
                             # set the sublabel
-                            set_sublabel(frigate_url, frigate_event, get_common_name(display_name) or display_name)
+                            set_sublabel(frigate_url, frigate_event, common_name)
+                            # publish to new_species topics if this is the first ever detection of this species
+                            cursor.execute(
+                                "SELECT COUNT(*) FROM detections WHERE display_name = ?", (display_name,)
+                            )
+                            if cursor.fetchone()[0] == 1:
+                                print(f"New species detected for the first time: {common_name}", flush=True)
+                                publish_new_species(client, common_name, display_name, score, after_data['camera'], frigate_event)
                         else:
-                            print("New score is lower.", flush=True)
+                            print("There is already a record for this event. Checking score", flush=True)
+                            # Update the existing record if the new score is higher
+                            existing_score = result[3]
+                            if score > existing_score:
+                                print("New score is higher. Updating record with higher score.", flush=True)
+                                cursor.execute("""
+                                    UPDATE detections
+                                    SET detection_time = ?, detection_index = ?, score = ?, display_name = ?, category_name = ?
+                                    WHERE frigate_event = ?
+                                    """, (formatted_start_time, index, score, display_name, category_name, frigate_event))
+                                # set the sublabel
+                                set_sublabel(frigate_url, frigate_event, get_common_name(display_name) or display_name)
+                            else:
+                                print("New score is lower.", flush=True)
 
-                    # Commit the changes
-                    conn.commit()
+                        # Commit the changes
+                        conn.commit()
+
+                    else:
+                        sub_label_data = after_data.get('sub_label')
+                        # sub_label is ["Common Name", score] (Frigate built-in classifier)
+                        # or a plain string (some Frigate versions / API-set labels)
+                        if isinstance(sub_label_data, list) and len(sub_label_data) >= 2:
+                            frigate_common = sub_label_data[0]
+                            frigate_score = float(sub_label_data[1])
+                        elif isinstance(sub_label_data, str) and sub_label_data:
+                            frigate_common = sub_label_data
+                            frigate_score = score  # use WAMF's own score
+                        else:
+                            frigate_common = None
+                            frigate_score = None
+                        if frigate_common:
+                            scientific_name = get_scientific_name(frigate_common)
+                            if scientific_name:
+                                print(f"WAMF below threshold; using Frigate sub_label: {frigate_common} (WAMF score: {frigate_score:.2f})", flush=True)
+                                cursor = conn.cursor()
+                                cursor.execute("SELECT * FROM detections WHERE frigate_event = ?", (frigate_event,))
+                                result = cursor.fetchone()
+                                if result is None:
+                                    cursor.execute("""
+                                        INSERT INTO detections (detection_time, detection_index, score,
+                                        display_name, category_name, frigate_event, camera_name)
+                                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                                    """, (formatted_start_time, -1, frigate_score, scientific_name,
+                                          'frigate_classified', frigate_event, after_data['camera']))
+                                    set_sublabel(frigate_url, frigate_event, frigate_common)
+                                    cursor.execute(
+                                        "SELECT COUNT(*) FROM detections WHERE display_name = ?", (scientific_name,)
+                                    )
+                                    if cursor.fetchone()[0] == 1:
+                                        print(f"New species (via Frigate sub_label): {frigate_common}", flush=True)
+                                        publish_new_species(client, frigate_common, scientific_name,
+                                                           frigate_score, after_data['camera'], frigate_event)
+                                else:
+                                    existing_score = result[3]
+                                    if frigate_score > existing_score:
+                                        cursor.execute("""
+                                            UPDATE detections SET score = ?, display_name = ?, category_name = ?
+                                            WHERE frigate_event = ?
+                                        """, (frigate_score, scientific_name, 'frigate_classified', frigate_event))
+                                        set_sublabel(frigate_url, frigate_event, frigate_common)
+                                conn.commit()
 
                 else:
-                    sub_label_data = after_data.get('sub_label')
-                    # sub_label is ["Common Name", score] (Frigate built-in classifier)
-                    # or a plain string (some Frigate versions / API-set labels)
-                    if isinstance(sub_label_data, list) and len(sub_label_data) >= 2:
-                        frigate_common = sub_label_data[0]
-                        frigate_score = float(sub_label_data[1])
-                    elif isinstance(sub_label_data, str) and sub_label_data:
-                        frigate_common = sub_label_data
-                        frigate_score = score  # use WAMF's own score
-                    else:
-                        frigate_common = None
-                        frigate_score = None
-                    if frigate_common:
-                        scientific_name = get_scientific_name(frigate_common)
-                        if scientific_name:
-                            print(f"WAMF below threshold; using Frigate sub_label: {frigate_common} ({frigate_score:.2f})", flush=True)
-                            cursor = conn.cursor()
-                            cursor.execute("SELECT * FROM detections WHERE frigate_event = ?", (frigate_event,))
-                            result = cursor.fetchone()
-                            if result is None:
-                                cursor.execute("""
-                                    INSERT INTO detections (detection_time, detection_index, score,
-                                    display_name, category_name, frigate_event, camera_name)
-                                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                                """, (formatted_start_time, -1, frigate_score, scientific_name,
-                                      'frigate_classified', frigate_event, after_data['camera']))
-                                set_sublabel(frigate_url, frigate_event, frigate_common)
-                                cursor.execute(
-                                    "SELECT COUNT(*) FROM detections WHERE display_name = ?", (scientific_name,)
-                                )
-                                if cursor.fetchone()[0] == 1:
-                                    print(f"New species (via Frigate sub_label): {frigate_common}", flush=True)
-                                    publish_new_species(client, frigate_common, scientific_name,
-                                                       frigate_score, after_data['camera'], frigate_event)
-                            else:
-                                existing_score = result[3]
-                                if frigate_score > existing_score:
-                                    cursor.execute("""
-                                        UPDATE detections SET score = ?, display_name = ?, category_name = ?
-                                        WHERE frigate_event = ?
-                                    """, (frigate_score, scientific_name, 'frigate_classified', frigate_event))
-                                    set_sublabel(frigate_url, frigate_event, frigate_common)
-                            conn.commit()
+                    print(f"Error: Could not retrieve the image. Status code: {response.status_code}", flush=True)
 
-            else:
-                print(f"Error: Could not retrieve the image. Status code: {response.status_code}", flush=True)
-
-    else:
-        firstmessage = False
-        print("skipping first message", flush=True)
-
-    conn.close()
+        else:
+            firstmessage = False
+            print("skipping first message", flush=True)
+    finally:
+        conn.close()
 
 
 def setupdb():
