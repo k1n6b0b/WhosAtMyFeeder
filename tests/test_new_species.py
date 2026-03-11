@@ -78,7 +78,7 @@ def fresh_db(tmp_path):
 # publish_new_species helper
 # ---------------------------------------------------------------------------
 
-def test_publish_new_species_publishes_all_five_topics():
+def test_publish_new_species_publishes_all_six_topics():
     client = MagicMock()
     speciesid.publish_new_species(
         client,
@@ -88,7 +88,7 @@ def test_publish_new_species_publishes_all_five_topics():
         camera_name="birdcam",
         frigate_event="evt-001",
     )
-    assert client.publish.call_count == 5
+    assert client.publish.call_count == 6
 
 
 def test_publish_new_species_correct_topics():
@@ -103,6 +103,7 @@ def test_publish_new_species_correct_topics():
         "whosatmyfeeder/new_species/score",
         "whosatmyfeeder/new_species/camera",
         "whosatmyfeeder/new_species/frigate_event",
+        "whosatmyfeeder/new_species",
     }
 
 
@@ -135,6 +136,24 @@ def test_publish_new_species_score_is_2dp():
     )
     payloads = {c.args[0]: c.args[1] for c in client.publish.call_args_list}
     assert payloads["whosatmyfeeder/new_species/score"] == "0.12"
+
+
+def test_publish_new_species_json_topic_payload():
+    client = MagicMock()
+    speciesid.publish_new_species(
+        client, "American Robin", "Turdus migratorius", 0.9234, "birdcam", "evt-001"
+    )
+    calls = {c.args[0]: c for c in client.publish.call_args_list}
+    assert "whosatmyfeeder/new_species" in calls
+    call = calls["whosatmyfeeder/new_species"]
+    payload = json.loads(call.args[1])
+    assert payload["common_name"] == "American Robin"
+    assert payload["scientific_name"] == "Turdus migratorius"
+    assert payload["score"] == "0.92"
+    assert payload["camera"] == "birdcam"
+    assert payload["frigate_event"] == "evt-001"
+    assert call.kwargs.get("qos") == 1
+    assert call.kwargs.get("retain") is True
 
 
 # ---------------------------------------------------------------------------

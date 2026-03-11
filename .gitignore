@@ -24,3 +24,6 @@ htmlcov/
 
 # Local dev compose override
 docker-compose.dev.yml
+
+# MCP config (contains private token)
+.mcp.json

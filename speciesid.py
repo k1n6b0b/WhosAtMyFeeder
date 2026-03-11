@@ -64,6 +64,14 @@ def publish_new_species(client, common_name, scientific_name, score, camera_name
     client.publish(f'{base}/score',           f'{score:.2f}',        qos=0, retain=True)
     client.publish(f'{base}/camera',          camera_name,           qos=0, retain=True)
     client.publish(f'{base}/frigate_event',   frigate_event,         qos=0, retain=True)
+    # Combined JSON for HA automation trigger
+    client.publish(base, json.dumps({
+        'common_name':     common_name,
+        'scientific_name': scientific_name,
+        'score':           f'{score:.2f}',
+        'camera':          camera_name,
+        'frigate_event':   frigate_event,
+    }), qos=1, retain=True)
 
 
 def set_sublabel(frigate_url, frigate_event, sublabel):
@@ -98,6 +106,15 @@ def set_sublabel(frigate_url, frigate_event, sublabel):
 
 
 def on_message(client, userdata, message):
+    try:
+        _on_message_inner(client, userdata, message)
+    except Exception as e:
+        print(f"ERROR in on_message (unhandled): {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+
+
+def _on_message_inner(client, userdata, message):
     conn = sqlite3.connect(DBPATH)
 
     global firstmessage
@@ -298,6 +315,18 @@ def run_webui():
 
 
 def run_mqtt_client():
+    # Initialize the classifier here (post-fork) so the XNNPACK thread pool is
+    # created fresh in this subprocess, avoiding fork-safety issues.
+    global classifier
+    base_options = core.BaseOptions(
+        file_name=config['classification']['model'], use_coral=False, num_threads=4)
+    classification_options = processor.ClassificationOptions(
+        max_results=1, score_threshold=0)
+    options = vision.ImageClassifierOptions(
+        base_options=base_options, classification_options=classification_options)
+    classifier = vision.ImageClassifier.create_from_options(options)
+    print("Classifier initialized in MQTT subprocess", flush=True)
+
     print("Starting MQTT client. Connecting to: " + config['frigate']['mqtt_server'], flush=True)
     now = datetime.now()
     current_time = now.strftime("%Y%m%d%H%M%S")
@@ -334,20 +363,6 @@ def main():
     print(sys.version_info, flush=True)
 
     load_config()
-
-    # Initialize the image classification model
-    base_options = core.BaseOptions(
-        file_name=config['classification']['model'], use_coral=False, num_threads=4)
-
-    # Enable Coral by this setting
-    classification_options = processor.ClassificationOptions(
-        max_results=1, score_threshold=0)
-    options = vision.ImageClassifierOptions(
-        base_options=base_options, classification_options=classification_options)
-
-    # create classifier
-    global classifier
-    classifier = vision.ImageClassifier.create_from_options(options)
 
     # setup database
     setupdb()
