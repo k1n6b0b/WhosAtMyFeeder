@@ -1,5 +1,7 @@
 # Who's At My Feeder?
 
+> **This fork has been superseded.** Active development has moved to [k1n6b0b/feederwatch-ai](https://github.com/k1n6b0b/feederwatch-ai) — a ground-up rewrite as a native Home Assistant integration. If you're setting up bird detection for the first time, start there.
+
 > **Fork notice:** This is a personal fork of [mmcc-xx/WhosAtMyFeeder](https://github.com/mmcc-xx/WhosAtMyFeeder). All original work and credit belongs to the original author. This fork adds deployment improvements and cherry-picked community contributions while the upstream project is inactive.
 
 Who's At My Feeder? is a sidecar app for [Frigate NVR](https://frigate.video/) that automatically identifies bird species from Frigate detections. It uses a [Google AIY bird classifier model](https://tfhub.dev/google/lite-model/aiy/vision/classifier/birds_V1/3) to classify snapshots and stores the best-scoring identification per Frigate event.
